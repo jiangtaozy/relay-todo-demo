@@ -1,0 +1,6 @@
+# go module
+go.mod
+go.sum
+
+# vim
+*.swp
