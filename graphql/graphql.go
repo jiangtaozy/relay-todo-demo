@@ -8,22 +8,13 @@ package graphql
 
 import (
   "log"
-  "time"
+  "strconv"
   "net/http"
   "encoding/json"
   "golang.org/x/net/context"
   "github.com/graphql-go/graphql"
   "github.com/graphql-go/relay"
-  "github.com/dancannon/gorethink"
 )
-
-const (
-  dialTimeout = 2 * time.Second
-  requestTimeout = 10 * time.Second
-)
-
-// rethink session
-var session *gorethink.Session
 
 var userType *graphql.Object
 var todoType *graphql.Object
@@ -32,16 +23,6 @@ var todoConnection *relay.GraphQLConnectionDefinitions
 var Schema graphql.Schema
 
 func Init() {
-  /*
-  session, err := gorethink.Connect(gorethink.ConnectOpts{
-    Address: "localhost:28015",
-    Database: "todo",
-    MaxOpen: 40,
-  })
-  if err != nil {
-    log.Fatalln("initDbError, err: ", err)
-  }
-  */
   nodeDefinitions = relay.NewNodeDefinitions(relay.NodeDefinitionsConfig{
     IDFetcher: func(id string, info graphql.ResolveInfo, ct context.Context) (interface{}, error) {
       resolvedID := relay.FromGlobalID(id)
@@ -117,8 +98,56 @@ func Init() {
       "node": nodeDefinitions.NodeField,
     },
   })
+  changeTodoStatusMutation := relay.MutationWithClientMutationID(relay.MutationConfig{
+    Name: "ChangeTodoStatus",
+    InputFields: graphql.InputObjectConfigFieldMap{
+      "complete": &graphql.InputObjectFieldConfig{
+        Type: graphql.NewNonNull(graphql.String),
+      },
+      "id": &graphql.InputObjectFieldConfig{
+        Type: graphql.NewNonNull(graphql.ID),
+      },
+    },
+    OutputFields: graphql.Fields{
+      "todo": &graphql.Field{
+        Type: todoType,
+        Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+          if payload, ok := params.Source.(map[string]interface{}); ok {
+            return GetTodo(payload["todoId"].(string)), nil
+          }
+          return nil, nil
+        },
+      },
+      "viewer": &graphql.Field{
+        Type: userType,
+        Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+          return GetViewer(), nil
+        },
+      },
+    },
+    MutateAndGetPayload: func(inputMap map[string]interface{}, info graphql.ResolveInfo, ctx context.Context) (map[string]interface{}, error) {
+      complete := inputMap["complete"].(string)
+      todoComplete, err := strconv.ParseBool(complete)
+      if err != nil {
+        log.Println("ChangeTodoStatusMutationCompleteStringToBooleanError: ", err)
+      }
+      id := inputMap["id"].(string)
+      todoId := relay.FromGlobalID(id).ID
+      ChangeTodoStatus(todoId, todoComplete)
+      return map[string]interface{}{
+        "todoId": todoId,
+      }, nil
+    },
+  })
+  rootMutation := graphql.NewObject(graphql.ObjectConfig{
+    Name: "Mutation",
+    Fields: graphql.Fields{
+      "changeTodoStatus": changeTodoStatusMutation,
+    },
+  })
   Schema, _ = graphql.NewSchema(graphql.SchemaConfig{
     Query: rootQuery,
+    Mutation: rootMutation,
   })
 }
 
@@ -141,6 +170,7 @@ func GraphqlHandle(w http.ResponseWriter, r *http.Request) {
     VariableValues: data.Variables,
   })
   if len(res.Errors) > 0 {
+    log.Printf("res: %v\n", res)
     log.Printf("GraphqlHandleResError, res.Errors: %v\n", res.Errors)
   }
   json.NewEncoder(w).Encode(res)

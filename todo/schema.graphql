@@ -1,0 +1,54 @@
+type Query {
+  viewer: User
+  node(
+    id: ID!
+  ): Node
+}
+
+interface Node {
+  id: ID!
+}
+
+type User implements Node {
+  id: ID!
+  todos(status: String = "any", after: String, first: Int, before: String,  last: Int): TodoConnection
+}
+
+type TodoConnection {
+  pageInfo: PageInfo!
+  edges: [TodoEdge]
+}
+
+type TodoEdge {
+  node: Todo
+  cursor: String!
+}
+
+type Todo implements Node {
+  id: ID!
+  text: String
+  complete: Boolean
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+input ChangeTodoStatusInput {
+  complete: Boolean!
+  id: ID!
+  clientMutationId: String
+}
+
+type ChangeTodoStatusPayload {
+  todo: Todo
+  viewer: User
+  clientMutationId: String
+}
+
+type Mutation {
+  changeTodoStatus(input: ChangeTodoStatusInput!): ChangeTodoStatusPayload
+}

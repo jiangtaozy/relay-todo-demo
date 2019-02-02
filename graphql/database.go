@@ -24,9 +24,9 @@ var viewer = &User{
 }
 
 var todos = []*Todo{
-  &Todo{"0", false, "todo0"},
-  &Todo{"1", false, "todo1"},
-  &Todo{"2", false, "todo2"},
+  &Todo{"10", false, "todo0"},
+  &Todo{"11", false, "todo1"},
+  &Todo{"12", false, "todo2"},
 }
 
 func GetViewer() *User {
@@ -61,3 +61,11 @@ func TodosToInterfaceSlice(todos ...*Todo) []interface{} {
   return interfaceSlice
 }
 
+func ChangeTodoStatus(todoId string, complete bool) {
+  for _, todo := range todos {
+    if todoId == todo.Id {
+      todo.Complete = complete
+      break
+    }
+  }
+}

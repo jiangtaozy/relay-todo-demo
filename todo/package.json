@@ -57,7 +57,8 @@
   "scripts": {
     "start": "node scripts/start.js",
     "build": "node scripts/build.js",
-    "test": "node scripts/test.js"
+    "test": "node scripts/test.js",
+    "relay": "relay-compiler --src ./src --schema ./schema.graphql"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -70,6 +71,7 @@
   ],
   "devDependencies": {
     "babel-plugin-relay": "^2.0.0",
+    "graphql": "^14.1.1",
     "relay-compiler": "^2.0.0"
   },
   "jest": {
@@ -116,6 +118,9 @@
   "babel": {
     "presets": [
       "react-app"
+    ],
+    "plugins": [
+      "relay"
     ]
   }
 }
